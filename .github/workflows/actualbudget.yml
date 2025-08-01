@@ -42,7 +42,7 @@ jobs:
           file: ./${{ env.PROJECT }}/Dockerfile-${{ matrix.flavor }}
           push: true
           platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/${{ github.repository_owner }}/${{ env.PROJECT }}-${{ matrix.flavor }}:${{ github.ref_name }}
+          tags: ghcr.io/${{ github.repository_owner }}/${{ env.PROJECT }}:${{ github.ref_name }}-${{ matrix.flavor }}
           sbom: true
           build-args: |
             APP_VERSION=${{ env.APP_VERSION }}
