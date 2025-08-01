@@ -23,13 +23,13 @@ RUN git clone https://github.com/actualbudget/actual.git . \
 
 RUN mkdir -p /rt \
   && for bin in node npm; do \
-       path="$(which "$bin")"; \
-       cp -p --parents "$path" /rt; \
-     done \
+      path="$(which "$bin")"; \
+      cp -p --parents "$path" /rt; \
+    done \
   && for bin in node npm; do \
-       path="$(which "$bin")"; \
-       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
-     done
+      path="$(which "$bin")"; \
+      ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
+    done
 
 FROM registry.access.redhat.com/ubi9-minimal
 

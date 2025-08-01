@@ -34,11 +34,11 @@ RUN mkdir -p /rt \
   && for bin in node npm bash env coreutils; do \
       path="$(which "$bin")"; \
       cp -p --parents "$path" /rt; \
-     done \
+    done \
   && for bin in node npm bash env coreutils; do \
       path="$(which "$bin")"; \
       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
-     done \
+    done \
   && find /build/node_modules -type f -name '*.node' -exec ldd {} \; | awk '/=>/ {print $(NF-1)}' | grep '^/' | sort -u | xargs -r cp -p --parents -t /rt \
   && cp -p --parents /etc/pki/tls/cert.pem /rt \
   && cp -p --parents /etc/crypto-policies/back-ends/opensslcnf.config /rt \
