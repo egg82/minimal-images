@@ -32,18 +32,20 @@ RUN mkdir -p /install \
 
 RUN mkdir -p /rt \
   && for bin in node npm bash env coreutils; do \
-       path="$(which "$bin")"; \
-       cp -p --parents "$path" /rt; \
+      path="$(which "$bin")"; \
+      cp -p --parents "$path" /rt; \
      done \
   && for bin in node npm bash env coreutils; do \
-       path="$(which "$bin")"; \
-       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
+      path="$(which "$bin")"; \
+      ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
      done \
   && find /build/node_modules -type f -name '*.node' -exec ldd {} \; | awk '/=>/ {print $(NF-1)}' | grep '^/' | sort -u | xargs -r cp -p --parents -t /rt \
   && cp -p --parents /etc/pki/tls/cert.pem /rt \
   && cp -p --parents /etc/crypto-policies/back-ends/opensslcnf.config /rt \
   && cp -p --parents /etc/crypto-policies/config /rt \
-  && cp -p --parents /lib64/ld-*.so.* /rt
+  && loader="$(ldd "$(which bash)" | awk '/ld-linux/ {print $1}')" \
+  && [ -n "$loader" ] \
+  && cp -p --parents "$loader" /rt
 
 COPY entrypoint.sh /install/
 RUN chown -R "${UID}":"${GID}" /install \
