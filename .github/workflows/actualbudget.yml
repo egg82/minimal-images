@@ -1,0 +1,48 @@
+name: Build & publish Docker images + SBOM
+
+on:
+  push:
+    tags:
+      - '*.*.*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        flavor: [ubi9-minimal, ubi9-micro, scratch, alpine]
+
+    env:
+      PROJECT: actualbudget
+      APP_VERSION: v25.7.1
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: docker/setup-buildx-action@v2
+        with:
+          install-qemu: true
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build & push ${{ matrix.flavor }}
+        uses: docker/build-push-action@v4
+        with:
+          context: ./${{ env.PROJECT }}
+          file: ./${{ env.PROJECT }}/Dockerfile-${{ matrix.flavor }}
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ghcr.io/${{ github.repository_owner }}/${{ env.PROJECT }}-${{ matrix.flavor }}:${{ github.ref_name }}
+          sbom: true
+          build-args: |
+            APP_VERSION=${{ env.APP_VERSION }}

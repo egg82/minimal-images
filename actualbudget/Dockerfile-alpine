@@ -1,0 +1,73 @@
+FROM node:20-alpine AS builder
+
+ARG APP_VERSION
+
+USER root
+
+RUN apk add --no-cache git bash
+
+WORKDIR /install
+
+RUN git clone https://github.com/actualbudget/actual.git . \
+  && git checkout ${APP_VERSION} \
+  && yarn install --immutable \
+  && yarn build:server \
+  && yarn workspaces focus @actual-app/sync-server --production \
+  && rm -rf ./node_modules/@actual-app/web ./node_modules/@actual-app/sync-server \
+  && mkdir -p ./node_modules/@actual-app/web && cp -p ./packages/desktop-client/package.json ./node_modules/@actual-app/web/package.json \
+  && cp -rp ./packages/desktop-client/build ./node_modules/@actual-app/web/build
+
+RUN mkdir -p /rt \
+  && for bin in node npm; do \
+       path="$(which "$bin")"; \
+       cp -p --parents "$path" /rt; \
+     done \
+  && for bin in node npm; do \
+       path="$(which "$bin")"; \
+       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
+     done \
+  && cp -rp --parents /usr/local/lib/node_modules /rt
+
+FROM alpine
+
+ARG USER=app
+ENV UID=1000
+ENV GID=1000
+
+USER root
+
+RUN apk add --no-cache bash
+
+COPY --from=builder /rt/ /rt/
+RUN for src in /rt/*; do \
+      tgt="/${src#/rt/}"; \
+      if [ -d "$src" ]; then \
+        mkdir -p "$tgt"; \
+        cp -ap "$src"/. "$tgt"/; \
+      else \
+        mkdir -p "$(dirname "$tgt")"; \
+        cp -pn "$src" "$tgt"; \
+      fi; \
+    done \
+  && rm -rf /rt
+
+RUN echo "${USER}:x:${UID}:" >> /etc/group \
+  && echo "${USER}:x:${UID}:${GID}::/app:/bin/bash" >> /etc/passwd
+
+ARG PATH="/usr/local/bin:${PATH}:/usr/local/lib/node_modules/bin:/app/node_modules/.bin"
+ARG NODE_ENV=production
+
+WORKDIR /app
+COPY --from=builder /install/node_modules /app/node_modules
+COPY --from=builder /install/packages/sync-server/package.json /app/
+COPY --from=builder /install/packages/sync-server/build /app/build
+COPY entrypoint.sh /app/
+
+RUN chown -R "${UID}":"${GID}" /app \
+  && chmod +x /app/entrypoint.sh
+
+USER ${UID}
+
+EXPOSE 5006
+
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -1,0 +1,77 @@
+FROM registry.access.redhat.com/ubi9/nodejs-20-minimal AS builder
+
+ARG APP_VERSION
+
+ARG USER=app
+ARG UID=1000
+ARG GID=1000
+
+USER root
+
+RUN microdnf install -y git bash \
+  && microdnf clean all \
+  && rm -rf /var/cache/dnf
+
+RUN npm install -g yarn
+
+WORKDIR /build
+
+RUN git clone https://github.com/actualbudget/actual.git . \
+  && git checkout ${APP_VERSION} \
+  && yarn install --immutable \
+  && yarn build:server \
+  && yarn workspaces focus @actual-app/sync-server --production \
+  && rm -rf ./node_modules/@actual-app/web ./node_modules/@actual-app/sync-server \
+  && mkdir -p ./node_modules/@actual-app/web && cp -p ./packages/desktop-client/package.json ./node_modules/@actual-app/web/package.json \
+  && cp -rp ./packages/desktop-client/build ./node_modules/@actual-app/web/build
+
+RUN mkdir -p /install \
+  && cp -rp /build/node_modules /install/node_modules \
+  && cp -p /build/packages/sync-server/package.json /install/ \
+  && cp -rp /build/packages/sync-server/build /install/build
+
+RUN mkdir -p /rt \
+  && for bin in node npm bash env coreutils; do \
+       path="$(which "$bin")"; \
+       cp -p --parents "$path" /rt; \
+     done \
+  && for bin in node npm bash env coreutils; do \
+       path="$(which "$bin")"; \
+       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
+     done \
+  && find /build/node_modules -type f -name '*.node' -exec ldd {} \; | awk '/=>/ {print $(NF-1)}' | grep '^/' | sort -u | xargs -r cp -p --parents -t /rt \
+  && cp -p --parents /etc/pki/tls/cert.pem /rt \
+  && cp -p --parents /etc/crypto-policies/back-ends/opensslcnf.config /rt \
+  && cp -p --parents /etc/crypto-policies/config /rt \
+  && cp -p --parents /lib64/ld-linux-x86-64.so.2 /rt
+
+COPY entrypoint.sh /install/
+RUN chown -R "${UID}":"${GID}" /install \
+  && chmod +x /install/entrypoint.sh \
+  && cp -rp /install /rt/app
+
+RUN mkdir -p /rt/etc \
+  && echo "${USER}:x:${UID}:" >> /etc/group \
+  && echo "${USER}:x:${UID}:${GID}::/app:/bin/bash" >> /etc/passwd
+
+RUN mkdir -p /rt/tmp \
+  && chmod 777 /rt/tmp
+
+FROM scratch
+
+ARG USER=app
+ENV UID=1000
+ENV GID=1000
+
+COPY --from=builder /rt/ /
+
+ENV PATH="/usr/local/bin:/usr/bin:/bin"
+ARG NODE_ENV=production
+
+WORKDIR /app
+
+USER ${UID}
+
+EXPOSE 5006
+
+ENTRYPOINT ["/app/entrypoint.sh"]
