@@ -16,6 +16,7 @@ jobs:
     strategy:
       matrix:
         flavor: [ubi9-minimal, ubi9-micro, scratch, alpine]
+        arch: [amd64, arm64]
 
     env:
       PROJECT: actualbudget
@@ -35,14 +36,14 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build & push ${{ matrix.flavor }}
+      - name: Build & push ${{ matrix.flavor }} on ${{ matrix.arch }}
         uses: docker/build-push-action@v4
         with:
           context: ./${{ env.PROJECT }}
           file: ./${{ env.PROJECT }}/Dockerfile-${{ matrix.flavor }}
           push: true
-          platforms: linux/amd64,linux/arm64
-          tags: ghcr.io/${{ github.repository_owner }}/${{ env.PROJECT }}:${{ github.ref_name }}-${{ matrix.flavor }}
+          platforms: linux/${{ matrix.arch }}
+          tags: ghcr.io/${{ github.repository_owner }}/minimal-images/${{ env.PROJECT }}:${{ github.ref_name }}_${{ matrix.flavor }}_${{ matrix.arch }}
           sbom: true
           build-args: |
             APP_VERSION=${{ env.APP_VERSION }}
