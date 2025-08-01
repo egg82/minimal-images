@@ -29,8 +29,7 @@ RUN mkdir -p /rt \
   && for bin in node npm bash; do \
        path="$(which "$bin")"; \
        ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
-     done \
-  && cp -p --parents /lib64/ld-linux-x86-64.so.2 /rt
+     done
 
 FROM registry.access.redhat.com/ubi9-micro
 

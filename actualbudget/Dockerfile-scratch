@@ -43,7 +43,7 @@ RUN mkdir -p /rt \
   && cp -p --parents /etc/pki/tls/cert.pem /rt \
   && cp -p --parents /etc/crypto-policies/back-ends/opensslcnf.config /rt \
   && cp -p --parents /etc/crypto-policies/config /rt \
-  && cp -p --parents /lib64/ld-linux-x86-64.so.2 /rt
+  && cp -p --parents /lib64/ld-*.so.* /rt
 
 COPY entrypoint.sh /install/
 RUN chown -R "${UID}":"${GID}" /install \
