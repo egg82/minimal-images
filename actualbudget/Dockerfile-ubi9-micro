@@ -55,7 +55,7 @@ RUN for src in /rt/*; do \
 RUN echo "${USER}:x:${UID}:" >> /etc/group \
   && echo "${USER}:x:${UID}:${GID}::/app:/bin/bash" >> /etc/passwd
 
-ARG NODE_ENV=production
+ENV NODE_ENV=production
 
 WORKDIR /app
 COPY --from=builder /install/node_modules /app/node_modules

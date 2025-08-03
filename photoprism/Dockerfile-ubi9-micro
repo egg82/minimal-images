@@ -1,0 +1,119 @@
+FROM registry.access.redhat.com/ubi9 AS builder
+
+ARG APP_VERSION
+ARG PLATFORM
+
+ARG EXPAT_VERSION=R_2_7_1
+ARG GIFLIB_VERSION=5.1.4
+ARG VIPS_VERSION=v8.17.1
+ARG TF_VERSION=2.18.0
+
+USER root
+
+ENV PATH="${PATH}:/install/bin"
+ENV LD_LIBRARY_PATH="/install/lib:/usr/local/lib:/usr/local/lib64"
+
+RUN dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm crb enable
+
+RUN dnf install -y git curl-minimal gzip tar bash \
+    gcc gcc-c++ make cmake pkgconfig autoconf automake patch libtool glib2-devel \
+    libxslt libxml2 \
+    libjpeg-turbo-devel libpng-devel libtiff-devel libwebp-devel \
+    fftw-devel libexif-devel libxml2-devel \
+    python3 python3-pip \
+  && dnf clean all \
+  && rm -rf /var/cache/dnf \
+  && python3 -m pip install --no-cache-dir meson ninja
+
+WORKDIR /libexpat
+
+RUN git clone https://github.com/libexpat/libexpat.git . \
+  && git checkout ${EXPAT_VERSION} \
+  && cd expat \
+  && ./buildconf.sh \
+  && ./configure \
+  && make -j"$(nproc)" install
+
+WORKDIR /giflib
+
+RUN git clone https://git.code.sf.net/p/giflib/code . \
+  && git checkout ${GIFLIB_VERSION} \
+  && ./autogen.sh \
+  && ./configure \
+  && make -j"$(nproc)" install
+
+WORKDIR /libvips
+
+RUN git clone https://github.com/libvips/libvips.git . \
+  && git checkout ${VIPS_VERSION} \
+  && meson setup build \
+  && ninja -C build \
+  && ninja -C build install
+
+WORKDIR /install
+
+RUN PLATFORM_SUBST=$(echo $PLATFORM | sed 's/\//-/g') PLATFORM_X86="$(echo $PLATFORM | sed 's/linux\/amd64/linux-x86_64/')" \
+  && curl -sSLO https://github.com/photoprism/photoprism/releases/download/${APP_VERSION}/photoprism_${APP_VERSION}-${PLATFORM_SUBST}.tar.gz \
+  && tar -xzf photoprism_${APP_VERSION}-${PLATFORM_SUBST}.tar.gz --strip-components=1 \
+  && rm -f photoprism_${APP_VERSION}-${PLATFORM_SUBST}.tar.gz \
+  && rm -f lib/libtensorflow* \
+  && curl -ssLO https://storage.googleapis.com/tensorflow/versions/${TF_VERSION}/libtensorflow-cpu-${PLATFORM_X86}.tar.gz \
+  && tar -xzf libtensorflow-cpu-${PLATFORM_X86}.tar.gz lib \
+  && rm -f libtensorflow-cpu-${PLATFORM_X86}.tar.gz
+
+RUN mkdir -p /rt \
+  && for bin in photoprism bash; do \
+      path="$(which "$bin")"; \
+      cp -p --parents "$path" /rt; \
+    done \
+  && for bin in photoprism bash; do \
+      path="$(which "$bin")"; \
+      ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
+    done
+
+FROM registry.access.redhat.com/ubi9-micro
+
+ARG USER=app
+ENV UID=1000
+ENV GID=1000
+
+USER root
+
+COPY --from=builder /rt/ /rt/
+RUN for src in /rt/*; do \
+      tgt="/${src#/rt/}"; \
+      if [ -d "$src" ]; then \
+        mkdir -p "$tgt"; \
+        cp -apn "$src"/. "$tgt"/; \
+      else \
+        mkdir -p "$(dirname "$tgt")"; \
+        cp -pn "$src" "$tgt"; \
+      fi; \
+    done \
+  && rm -rf /rt \
+  && rm -rf /install
+
+RUN echo "${USER}:x:${UID}:" >> /etc/group \
+  && echo "${USER}:x:${UID}:${GID}::/app:/bin/bash" >> /etc/passwd
+
+ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"
+ENV TF_CPP_MIN_LOG_LEVEL=1 TF_ENABLE_ONEDNN_OPTS=1
+
+WORKDIR /photoprism
+COPY --from=builder /install/assets /photoprism/assets
+COPY --from=builder /install/bin/photoprism /photoprism
+COPY --from=builder /install/lib /usr/local/lib
+COPY entrypoint.sh /photoprism/
+
+RUN chown -R "${UID}":"${GID}" /photoprism \
+  && chmod +x /photoprism/entrypoint.sh
+
+USER ${UID}
+
+EXPOSE 2342 2343 2442 2443 9515 40000
+
+VOLUME /photoprism/originals
+VOLUME /photoprism/import
+VOLUME /photoprism/storage
+
+ENTRYPOINT ["/photoprism/entrypoint.sh"]

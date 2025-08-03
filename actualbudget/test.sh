@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# https://github.com/actualbudget/actual/blob/master/sync-server.Dockerfile
+
 APP_VERSION=v25.7.1
 
 docker build --build-arg APP_VERSION=$APP_VERSION -t actualbudget:test-minimal --file Dockerfile-ubi9-minimal .

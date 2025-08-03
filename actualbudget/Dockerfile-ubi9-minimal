@@ -59,7 +59,7 @@ RUN for src in /rt/*; do \
 RUN groupadd -g ${GID} ${USER} \
   && useradd -r -u ${UID} -g ${USER} -d /app -s /bin/bash ${USER}
 
-ARG NODE_ENV=production
+ENV NODE_ENV=production
 
 WORKDIR /app
 COPY --from=builder /install/node_modules /app/node_modules
