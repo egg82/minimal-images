@@ -36,6 +36,7 @@ RUN mkdir -p /rt \
       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
     done \
   && cp -rp /install/src /install/dist/main/_internal/ \
+  && rm -rf /rt/install \
   && cp -p --parents /etc/pki/tls/cert.pem /rt \
   && cp -p --parents /etc/crypto-policies/back-ends/opensslcnf.config /rt \
   && cp -p --parents /etc/crypto-policies/config /rt \
@@ -54,8 +55,6 @@ RUN mkdir -p /rt/etc \
 
 RUN mkdir -p /rt/tmp \
   && chmod 777 /rt/tmp
-
-RUN find / -type f -name libm.so.6 > /rt/temp.txt
 
 FROM scratch
 

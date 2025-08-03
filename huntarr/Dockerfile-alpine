@@ -54,7 +54,8 @@ RUN for src in /rt/*; do \
         cp -pn "$src" "$tgt"; \
       fi; \
     done \
-  && rm -rf /rt
+  && rm -rf /rt \
+  && rm -rf /install
 
 RUN echo "${USER}:x:${UID}:" >> /etc/group \
   && echo "${USER}:x:${UID}:${GID}::/app:/bin/bash" >> /etc/passwd
