@@ -11,11 +11,11 @@ for vol in "${VOLUMES[@]}"; do
   docker run --rm -v "$vol":/data alpine:latest sh -c "chown -R 1000:1000 /data"
 done
 
-docker build --build-arg APP_VERSION=$APP_VERSION --build-arg PLATFORM=linux/amd64 -t photoprism:test-minimal --file Dockerfile-ubi9-minimal .
-docker run -p 127.0.0.1:2342:2342 -v originals:/photoprism/originals -v import:/photoprism/import -v storage:/photoprism/storage --rm photoprism:test-minimal
+# docker build --build-arg APP_VERSION=$APP_VERSION --build-arg PLATFORM=linux/amd64 -t photoprism:test-minimal --file Dockerfile-ubi9-minimal .
+# docker run -p 127.0.0.1:2342:2342 -v originals:/photoprism/originals -v import:/photoprism/import -v storage:/photoprism/storage --rm photoprism:test-minimal
 
-docker build --build-arg APP_VERSION=$APP_VERSION --build-arg PLATFORM=linux/amd64 -t photoprism:test-micro --file Dockerfile-ubi9-micro .
-docker run -p 127.0.0.1:2342:2342 -v originals:/photoprism/originals -v import:/photoprism/import -v storage:/photoprism/storage --rm photoprism:test-micro
+# docker build --build-arg APP_VERSION=$APP_VERSION --build-arg PLATFORM=linux/amd64 -t photoprism:test-micro --file Dockerfile-ubi9-micro .
+# docker run -p 127.0.0.1:2342:2342 -v originals:/photoprism/originals -v import:/photoprism/import -v storage:/photoprism/storage --rm photoprism:test-micro
 
 docker build --build-arg APP_VERSION=$APP_VERSION --build-arg PLATFORM=linux/amd64 -t photoprism:test-scratch --file Dockerfile-scratch .
 docker run -p 127.0.0.1:2342:2342 -v originals:/photoprism/originals -v import:/photoprism/import -v storage:/photoprism/storage --rm photoprism:test-scratch

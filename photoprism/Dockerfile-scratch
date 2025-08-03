@@ -66,11 +66,11 @@ RUN PLATFORM_SUBST=$(echo $PLATFORM | sed 's/\//-/g') PLATFORM_X86="$(echo $PLAT
   && rm -f libtensorflow-cpu-${PLATFORM_X86}.tar.gz
 
 RUN mkdir -p /rt \
-  && for bin in photoprism crond curl bash env coreutils; do \
+  && for bin in photoprism crond curl bash sh env coreutils; do \
       path="$(which "$bin")"; \
       cp -p --parents "$path" /rt; \
     done \
-  && for bin in photoprism crond curl bash env coreutils; do \
+  && for bin in photoprism crond curl bash sh env coreutils; do \
       path="$(which "$bin")"; \
       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
     done \
@@ -88,7 +88,9 @@ RUN chown -R "${UID}":"${GID}" /install \
   && chmod +x /install/entrypoint.sh \
   && mkdir -p /rt/photoprism/assets && chown "${UID}":"${GID}" /rt/photoprism/assets && cp -rp /install/assets /rt/photoprism/ \
   && cp -p /install/bin/photoprism /rt/photoprism/ \
-  && cp -p /install/entrypoint.sh /rt/photoprism/
+  && cp -p /install/entrypoint.sh /rt/photoprism/ \
+  && mkdir -p /rt/bin && ln -sf /usr/bin/sh /rt/bin/sh \
+  && mkdir -p /rt/var/run && mkdir -p /rt/var/spool/cron
 
 RUN mkdir -p /rt/etc \
   && echo "${USER}:x:${UID}:" >> /etc/group \
@@ -103,9 +105,9 @@ ARG USER=app
 ENV UID=1000
 ENV GID=1000
 
-USER root
-
 COPY --from=builder /rt/ /
+
+RUN /usr/sbin/crond
 
 ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
 ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"

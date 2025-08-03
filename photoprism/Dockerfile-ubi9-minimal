@@ -97,6 +97,8 @@ RUN for src in /rt/*; do \
   && rm -rf /rt \
   && rm -rf /install
 
+RUN /usr/sbin/crond
+
 RUN groupadd -g ${GID} ${USER} \
   && useradd -r -u ${UID} -g ${USER} -d /photoprism -s /bin/bash ${USER}
 
