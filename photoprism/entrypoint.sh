@@ -8,9 +8,9 @@ if [ "$#" -eq 0 ]; then
   set -- start
 fi
 
-PHOTOPRISM_ORIGINALS_PATH=${PHOTOPRISM_ORIGINALS_PATH-/photoprism/originals}
-PHOTOPRISM_IMPORT_PATH=${PHOTOPRISM_IMPORT_PATH-/photoprism/import}
-PHOTOPRISM_STORAGE_PATH=${PHOTOPRISM_STORAGE_PATH-/photoprism/storage}
+export PHOTOPRISM_ORIGINALS_PATH=${PHOTOPRISM_ORIGINALS_PATH-/photoprism/originals}
+export PHOTOPRISM_IMPORT_PATH=${PHOTOPRISM_IMPORT_PATH-/photoprism/import}
+export PHOTOPRISM_STORAGE_PATH=${PHOTOPRISM_STORAGE_PATH-/photoprism/storage}
 
 _term() {
   printf "\nCaught SIGTERM, forwarding to app..\n" >&2
