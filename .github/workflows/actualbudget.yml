@@ -43,9 +43,9 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/${{ github.repository_owner }}/minimal-images/${{ env.PROJECT }}:${{ github.ref_name }}-${{ matrix.flavor }}
-            ${{ matrix.flavor == 'alpine' && format('ghcr.io/{0}/minimal-images/{1}:{2}', github.repository_owner, env.PROJECT, github.ref_name) || '' }}
-            ${{ matrix.flavor == 'alpine' && format('ghcr.io/{0}/minimal-images/{1}:latest', github.repository_owner, env.PROJECT) || '' }}
-            ${{ matrix.flavor == 'alpine' && format('ghcr.io/{0}/minimal-images/{1}:{2}', github.repository_owner, env.PROJECT, github.sha) || '' }}
+            ${{ matrix.flavor == 'ubi9-micro' && format('ghcr.io/{0}/minimal-images/{1}:{2}', github.repository_owner, env.PROJECT, github.ref_name) || '' }}
+            ${{ matrix.flavor == 'ubi9-micro' && format('ghcr.io/{0}/minimal-images/{1}:latest', github.repository_owner, env.PROJECT) || '' }}
+            ${{ matrix.flavor == 'ubi9-micro' && format('ghcr.io/{0}/minimal-images/{1}:{2}', github.repository_owner, env.PROJECT, github.sha) || '' }}
           sbom: true
           build-args: |
             APP_VERSION=${{ env.APP_VERSION }}
