@@ -1,0 +1,79 @@
+FROM python:3.9-alpine AS builder
+
+ARG APP_VERSION
+
+USER root
+
+RUN apk add --no-cache git bash \
+  binutils build-base python3-dev libffi-dev openssl-dev py3-yaml
+
+WORKDIR /install
+
+ENV FLASK_ENV=production
+ENV PYTHONOPTIMIZE=2
+
+RUN git clone https://github.com/plexguide/Huntarr.io.git . \
+  && git checkout ${APP_VERSION} && rm -rf .git && rm -rf docs \
+  && sed -i '/^[Pp]y[Yy]aml/ d' requirements.txt \
+  && python3 -m pip install --upgrade pip setuptools wheel \
+  && python3 -m pip install --no-cache-dir -r requirements.txt \
+  && flags=$(grep -v '^\s*#' requirements.txt | sed 's/\[.*\]//' | sed -e 's/;.*//' -e 's/[<>=!].*$//' | awk '{print tolower($0)}' | xargs -I{} printf " --hidden-import={} --collect-all={}" ) \
+  && python3 -m pip install --no-cache-dir pyinstaller && python3 -OO -m PyInstaller --strip --noupx $flags main.py
+
+ENV PATH="${PATH}:/install/dist/main"
+
+RUN mkdir -p /rt \
+  && for bin in main; do \
+      path="$(which "$bin")"; \
+      cp -p --parents "$path" /rt; \
+    done \
+  && for bin in main; do \
+      path="$(which "$bin")"; \
+      ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
+    done \
+  && cp -rp /install/src /install/dist/main/_internal/
+
+FROM alpine
+
+ARG USER=app
+ENV UID=1000
+ENV GID=1000
+
+USER root
+
+RUN apk add --no-cache bash
+
+COPY --from=builder /rt/ /rt/
+RUN for src in /rt/*; do \
+      tgt="/${src#/rt/}"; \
+      if [ -d "$src" ]; then \
+        mkdir -p "$tgt"; \
+        cp -ap "$src"/. "$tgt"/; \
+      else \
+        mkdir -p "$(dirname "$tgt")"; \
+        cp -pn "$src" "$tgt"; \
+      fi; \
+    done \
+  && rm -rf /rt
+
+RUN echo "${USER}:x:${UID}:" >> /etc/group \
+  && echo "${USER}:x:${UID}:${GID}::/app:/bin/bash" >> /etc/passwd
+
+ENV PATH="/usr/local/bin:${PATH}"
+ENV FLASK_ENV=production
+ENV PYTHONOPTIMIZE=2
+
+WORKDIR /app
+COPY --from=builder /install/dist/main /app
+COPY entrypoint.sh /app/
+
+RUN chown -R "${UID}":"${GID}" /app \
+  && chmod +x /app/entrypoint.sh
+
+USER ${UID}
+
+EXPOSE 9705
+
+VOLUME /config
+
+ENTRYPOINT ["/app/entrypoint.sh"]

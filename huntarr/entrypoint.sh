@@ -30,9 +30,9 @@ _int() {
 trap _term SIGTERM
 trap _int SIGINT
 
-echo "Starting actualbudget.."
+echo "Starting huntarr.."
 
-node build/app.js "$@" &
+/app/main "$@" &
 child=$!
 
 wait "$child"

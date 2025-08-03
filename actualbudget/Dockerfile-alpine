@@ -9,7 +9,7 @@ RUN apk add --no-cache git bash
 WORKDIR /install
 
 RUN git clone https://github.com/actualbudget/actual.git . \
-  && git checkout ${APP_VERSION} \
+  && git checkout ${APP_VERSION} && rm -rf .git \
   && yarn install --immutable \
   && yarn build:server \
   && yarn workspaces focus @actual-app/sync-server --production \

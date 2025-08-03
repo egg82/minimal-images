@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# https://github.com/photoprism/photoprism/blob/250707-d28b3101e/docker/develop/plucky/Dockerfile
+# https://github.com/photoprism/photoprism/blob/develop/docker/develop/plucky/Dockerfile
 
 APP_VERSION=250707-d28b3101e
 

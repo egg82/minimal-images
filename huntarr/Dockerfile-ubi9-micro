@@ -1,0 +1,77 @@
+FROM registry.access.redhat.com/ubi9 AS builder
+
+ARG APP_VERSION
+
+USER root
+
+RUN dnf install -y git bash \
+    python3 python3-pip binutils \
+  && dnf clean all \
+  && rm -rf /var/cache/dnf
+
+WORKDIR /install
+
+ENV FLASK_ENV=production
+ENV PYTHONOPTIMIZE=2
+
+RUN git clone https://github.com/plexguide/Huntarr.io.git . \
+  && git checkout ${APP_VERSION} && rm -rf .git && rm -rf docs \
+  && python3 -m pip install --no-cache-dir -r requirements.txt \
+  && flags=$(grep -v '^\s*#' requirements.txt | sed 's/\[.*\]//' | sed -e 's/;.*//' -e 's/[<>=!].*$//' | awk '{print tolower($0)}' | xargs -I{} printf " --hidden-import={} --collect-all={}" ) \
+  && python3 -m pip install --no-cache-dir pyinstaller && python3 -OO -m PyInstaller --strip --noupx $flags main.py
+
+ENV PATH="${PATH}:/install/dist/main"
+
+RUN mkdir -p /rt \
+  && for bin in main bash; do \
+      path="$(which "$bin")"; \
+      cp -p --parents "$path" /rt; \
+    done \
+  && for bin in main bash; do \
+      path="$(which "$bin")"; \
+      ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
+    done \
+  && cp -rp /install/src /install/dist/main/_internal/
+
+FROM registry.access.redhat.com/ubi9-micro
+
+ARG USER=app
+ENV UID=1000
+ENV GID=1000
+
+USER root
+
+COPY --from=builder /rt/ /rt/
+RUN for src in /rt/*; do \
+      tgt="/${src#/rt/}"; \
+      if [ -d "$src" ]; then \
+        mkdir -p "$tgt"; \
+        cp -apn "$src"/. "$tgt"/; \
+      else \
+        mkdir -p "$(dirname "$tgt")"; \
+        cp -pn "$src" "$tgt"; \
+      fi; \
+    done \
+  && rm -rf /rt \
+  && rm -rf /install
+
+RUN echo "${USER}:x:${UID}:" >> /etc/group \
+  && echo "${USER}:x:${UID}:${GID}::/app:/bin/bash" >> /etc/passwd
+
+ENV FLASK_ENV=production
+ENV PYTHONOPTIMIZE=2
+
+WORKDIR /app
+COPY --from=builder /install/dist/main /app
+COPY entrypoint.sh /app/
+
+RUN chown -R "${UID}":"${GID}" /app \
+  && chmod +x /app/entrypoint.sh
+
+USER ${UID}
+
+EXPOSE 9705
+
+VOLUME /config
+
+ENTRYPOINT ["/app/entrypoint.sh"]
