@@ -17,7 +17,7 @@ USER root
 ENV PATH="${PATH}:/install/bin"
 ENV LD_LIBRARY_PATH="/install/lib:/usr/local/lib:/usr/local/lib64"
 
-RUN dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm crb enable
+RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && crb enable
 
 RUN dnf install -y git curl-minimal gzip tar bash \
     gcc gcc-c++ make cmake pkgconfig autoconf automake patch libtool glib2-devel \
@@ -75,6 +75,7 @@ RUN mkdir -p /rt \
       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
     done \
   && mkdir -p /rt/usr/local/lib && cp -p /install/lib/* /rt/usr/local/lib/ \
+  && rm -rf /rt/install \
   && cp -p --parents /etc/pki/tls/cert.pem /rt \
   && cp -p --parents /etc/crypto-policies/back-ends/opensslcnf.config /rt \
   && cp -p --parents /etc/crypto-policies/config /rt \
