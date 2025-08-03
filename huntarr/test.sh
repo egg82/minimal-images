@@ -12,16 +12,16 @@ for vol in "${VOLUMES[@]}"; do
 done
 
 docker build --build-arg APP_VERSION=$APP_VERSION -t huntarr:test-minimal --file Dockerfile-ubi9-minimal .
-docker run -v config:/config --rm huntarr:test-minimal
+docker run -p 127.0.0.1:9705:9705 -v config:/config --rm huntarr:test-minimal
 
 docker build --build-arg APP_VERSION=$APP_VERSION -t huntarr:test-micro --file Dockerfile-ubi9-micro .
-docker run -v config:/config --rm huntarr:test-micro
+docker run -p 127.0.0.1:9705:9705 -v config:/config --rm huntarr:test-micro
 
 docker build --build-arg APP_VERSION=$APP_VERSION -t huntarr:test-scratch --file Dockerfile-scratch .
-docker run -v config:/config --rm huntarr:test-scratch
+docker run -p 127.0.0.1:9705:9705 -v config:/config --rm huntarr:test-scratch
 
 docker build --build-arg APP_VERSION=$APP_VERSION -t huntarr:test-alpine --file Dockerfile-alpine .
-docker run -v config:/config --rm huntarr:test-alpine
+docker run -p 127.0.0.1:9705:9705 -v config:/config --rm huntarr:test-alpine
 
 for vol in "${VOLUMES[@]}"; do
   docker volume rm "$vol"

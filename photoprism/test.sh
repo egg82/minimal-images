@@ -12,13 +12,13 @@ for vol in "${VOLUMES[@]}"; do
 done
 
 docker build --build-arg APP_VERSION=$APP_VERSION --build-arg PLATFORM=linux/amd64 -t photoprism:test-minimal --file Dockerfile-ubi9-minimal .
-docker run -v originals:/photoprism/originals -v import:/photoprism/import -v storage:/photoprism/storage --rm photoprism:test-minimal
+docker run -p 127.0.0.1:2342:2342 -v originals:/photoprism/originals -v import:/photoprism/import -v storage:/photoprism/storage --rm photoprism:test-minimal
 
 docker build --build-arg APP_VERSION=$APP_VERSION --build-arg PLATFORM=linux/amd64 -t photoprism:test-micro --file Dockerfile-ubi9-micro .
-docker run -v originals:/photoprism/originals -v import:/photoprism/import -v storage:/photoprism/storage --rm photoprism:test-micro
+docker run -p 127.0.0.1:2342:2342 -v originals:/photoprism/originals -v import:/photoprism/import -v storage:/photoprism/storage --rm photoprism:test-micro
 
 docker build --build-arg APP_VERSION=$APP_VERSION --build-arg PLATFORM=linux/amd64 -t photoprism:test-scratch --file Dockerfile-scratch .
-docker run -v originals:/photoprism/originals -v import:/photoprism/import -v storage:/photoprism/storage --rm photoprism:test-scratch
+docker run -p 127.0.0.1:2342:2342 -v originals:/photoprism/originals -v import:/photoprism/import -v storage:/photoprism/storage --rm photoprism:test-scratch
 
 for vol in "${VOLUMES[@]}"; do
   docker volume rm "$vol"

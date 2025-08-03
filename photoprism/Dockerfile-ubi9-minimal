@@ -62,11 +62,11 @@ RUN PLATFORM_SUBST=$(echo $PLATFORM | sed 's/\//-/g') PLATFORM_X86="$(echo $PLAT
   && rm -f libtensorflow-cpu-${PLATFORM_X86}.tar.gz
 
 RUN mkdir -p /rt \
-  && for bin in photoprism; do \
+  && for bin in photoprism curl; do \
       path="$(which "$bin")"; \
       cp -p --parents "$path" /rt; \
     done \
-  && for bin in photoprism; do \
+  && for bin in photoprism curl; do \
       path="$(which "$bin")"; \
       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
     done

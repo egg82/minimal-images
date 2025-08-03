@@ -4,7 +4,7 @@ ARG APP_VERSION
 
 USER root
 
-RUN apk add --no-cache git bash
+RUN apk add --no-cache git curl bash
 
 WORKDIR /install
 
@@ -18,11 +18,11 @@ RUN git clone https://github.com/actualbudget/actual.git . \
   && cp -rp ./packages/desktop-client/build ./node_modules/@actual-app/web/build
 
 RUN mkdir -p /rt \
-  && for bin in node npm; do \
+  && for bin in node npm curl; do \
       path="$(which "$bin")"; \
       cp -p --parents "$path" /rt; \
     done \
-  && for bin in node npm; do \
+  && for bin in node npm curl; do \
       path="$(which "$bin")"; \
       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
     done \

@@ -4,7 +4,7 @@ ARG APP_VERSION
 
 USER root
 
-RUN dnf install -y git bash \
+RUN dnf install -y git curl-minimal bash \
     python3 python3-pip binutils \
   && dnf clean all \
   && rm -rf /var/cache/dnf
@@ -15,23 +15,24 @@ ENV FLASK_ENV=production
 ENV PYTHONOPTIMIZE=2
 
 RUN git clone https://github.com/plexguide/Huntarr.io.git . \
-  && git checkout ${APP_VERSION} && rm -rf .git && rm -rf docs \
+  && git checkout ${APP_VERSION} && rm -rf .git \
   && python3 -m pip install --no-cache-dir -r requirements.txt \
   && flags=$(grep -v '^\s*#' requirements.txt | sed 's/\[.*\]//' | sed -e 's/;.*//' -e 's/[<>=!].*$//' | awk '{print tolower($0)}' | xargs -I{} printf " --hidden-import={} --collect-all={}" ) \
-  && python3 -m pip install --no-cache-dir pyinstaller && python3 -OO -m PyInstaller --strip --noupx $flags main.py
+  && python3 -m pip install --no-cache-dir pyinstaller && python3 -OO -m PyInstaller --strip --noupx $flags main.py \
+  && cp -rp frontend/templates dist/main/ && cp -rp frontend/static dist/main/ \
+  && cp -rp src dist/main/_internal/ && cp -p version.txt dist/main/_internal/ && cp -p manifest.json dist/main/_internal/
 
 ENV PATH="${PATH}:/install/dist/main"
 
 RUN mkdir -p /rt \
-  && for bin in main bash; do \
+  && for bin in main curl bash; do \
       path="$(which "$bin")"; \
       cp -p --parents "$path" /rt; \
     done \
-  && for bin in main bash; do \
+  && for bin in main curl bash; do \
       path="$(which "$bin")"; \
       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
-    done \
-  && cp -rp /install/src /install/dist/main/_internal/
+    done
 
 FROM registry.access.redhat.com/ubi9-micro
 
