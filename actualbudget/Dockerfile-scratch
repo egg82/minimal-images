@@ -67,7 +67,7 @@ ENV GID=1000
 
 COPY --from=builder /rt/ /
 
-ENV PATH="/usr/local/bin:/usr/bin:/bin"
+ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
 ENV NODE_ENV=production
 
 WORKDIR /app

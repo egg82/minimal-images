@@ -15,7 +15,7 @@ ENV LD_LIBRARY_PATH="/install/lib:/usr/local/lib:/usr/local/lib64"
 
 RUN dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm && crb enable
 
-RUN dnf install -y git curl-minimal gzip tar bash \
+RUN dnf install -y git curl-minimal cronie gzip tar bash \
     gcc gcc-c++ make cmake pkgconfig autoconf automake patch libtool glib2-devel \
     libxslt libxml2 \
     libjpeg-turbo-devel libpng-devel libtiff-devel libwebp-devel \
@@ -62,11 +62,11 @@ RUN PLATFORM_SUBST=$(echo $PLATFORM | sed 's/\//-/g') PLATFORM_X86="$(echo $PLAT
   && rm -f libtensorflow-cpu-${PLATFORM_X86}.tar.gz
 
 RUN mkdir -p /rt \
-  && for bin in photoprism; do \
+  && for bin in photoprism crond; do \
       path="$(which "$bin")"; \
       cp -p --parents "$path" /rt; \
     done \
-  && for bin in photoprism; do \
+  && for bin in photoprism crond; do \
       path="$(which "$bin")"; \
       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
     done
@@ -79,7 +79,7 @@ ENV GID=1000
 
 USER root
 
-RUN microdnf install -y bash \
+RUN microdnf install -y cron bash \
   && microdnf clean all \
   && rm -rf /var/cache/dnf
 
