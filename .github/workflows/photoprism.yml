@@ -49,3 +49,4 @@ jobs:
           sbom: true
           build-args: |
             APP_VERSION=${{ env.APP_VERSION }}
+            PLATFORM=linux/amd64
