@@ -2,9 +2,7 @@
 
 set -eo pipefail
 
-if [ -z "${TERM_GRACE_PERIOD}" ]; then
-  TERM_GRACE_PERIOD=10
-fi
+TERM_GRACE_PERIOD=${TERM_GRACE_PERIOD:-10}
 
 _term() {
   printf "\nCaught SIGTERM, forwarding to app..\n" >&2
@@ -34,7 +32,7 @@ trap _int SIGINT
 
 echo "Starting actualbudget.."
 
-node build/app.js &
+node build/app.js "$@" &
 child=$!
 
 wait "$child"

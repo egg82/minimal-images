@@ -2,9 +2,15 @@
 
 set -eo pipefail
 
-if [ -z "${TERM_GRACE_PERIOD}" ]; then
-  TERM_GRACE_PERIOD=10
+TERM_GRACE_PERIOD=${TERM_GRACE_PERIOD:-10}
+
+if [ "$#" -eq 0 ]; then
+  set -- start
 fi
+
+PHOTOPRISM_ORIGINALS_PATH=${PHOTOPRISM_ORIGINALS_PATH-/photoprism/originals}
+PHOTOPRISM_IMPORT_PATH=${PHOTOPRISM_IMPORT_PATH-/photoprism/import}
+PHOTOPRISM_STORAGE_PATH=${PHOTOPRISM_STORAGE_PATH-/photoprism/storage}
 
 _term() {
   printf "\nCaught SIGTERM, forwarding to app..\n" >&2
@@ -34,7 +40,7 @@ trap _int SIGINT
 
 echo "Starting photoprism.."
 
-/photoprism/photoprism -o /photoprism/originals --im /photoprism/import -s /photoprism/storage start &
+/photoprism/photoprism "$@" &
 child=$!
 
 wait "$child"
