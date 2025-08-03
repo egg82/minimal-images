@@ -1,4 +1,4 @@
-name: Build & publish Docker images + SBOM
+name: photoprism
 
 on:
   push:
