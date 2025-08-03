@@ -86,7 +86,7 @@ RUN mkdir -p /rt \
 COPY entrypoint.sh /install/
 RUN chown -R "${UID}":"${GID}" /install \
   && chmod +x /install/entrypoint.sh \
-  && cp -rp /install/assets /rt/photoprism/ \
+  && mkdir -p /rt/photoprism/assets && chown "${UID}":"${GID}" /rt/photoprism/assets && cp -rp /install/assets /rt/photoprism/ \
   && cp -p /install/bin/photoprism /rt/photoprism/ \
   && cp -p /install/entrypoint.sh /rt/photoprism/
 

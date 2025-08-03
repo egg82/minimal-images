@@ -34,7 +34,7 @@ trap _int SIGINT
 
 echo "Starting photoprism.."
 
-/photoprism/photoprism &
+/photoprism/photoprism -o /photoprism/originals --im /photoprism/import -s /photoprism/storage start &
 child=$!
 
 wait "$child"
