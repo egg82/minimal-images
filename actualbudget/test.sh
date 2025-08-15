@@ -2,7 +2,7 @@
 
 # https://github.com/actualbudget/actual/blob/master/sync-server.Dockerfile
 
-APP_VERSION=v25.7.1
+APP_VERSION=v25.8.0
 
 docker build --build-arg APP_VERSION=$APP_VERSION -t actualbudget:test-minimal --file Dockerfile-ubi9-minimal .
 docker run -p 127.0.0.1:5006:5006 --rm actualbudget:test-minimal

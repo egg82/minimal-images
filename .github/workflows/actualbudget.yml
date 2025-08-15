@@ -20,7 +20,7 @@ jobs:
 
     env:
       PROJECT: actualbudget
-      APP_VERSION: v25.7.1
+      APP_VERSION: v25.8.0
 
     steps:
       - uses: actions/checkout@v3
