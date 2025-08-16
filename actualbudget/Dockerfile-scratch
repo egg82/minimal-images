@@ -31,11 +31,11 @@ RUN mkdir -p /install \
   && cp -rp /build/packages/sync-server/build /install/build
 
 RUN mkdir -p /rt \
-  && for bin in node npm curl bash sh env coreutils; do \
+  && for bin in node npm curl bash sh env coreutils sleep kill printf echo; do \
       path="$(which "$bin")"; \
       cp -p --parents "$path" /rt; \
     done \
-  && for bin in node npm curl bash sh env coreutils; do \
+  && for bin in node npm curl bash sh env coreutils sleep kill printf echo; do \
       path="$(which "$bin")"; \
       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
     done \
