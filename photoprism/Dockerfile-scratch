@@ -42,7 +42,9 @@ RUN set -eux; \
     amd64/*) APP_ARCH="amd64" ;; \
     arm64/*) APP_ARCH="arm64" ;; \
     arm/v7) APP_ARCH="armhf" ;; \
+    arm/v6) APP_ARCH="armel" ;; \
     386/*) APP_ARCH="i686" ;; \
+    arm/*|arm) APP_ARCH="armhf" ;; \
     *) echo "Unsupported arch: ${TARGETARCH}/${TARGETVARIANT}" >&2; exit 1 ;; \
   esac; \
   curl -sSLO https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-${APP_ARCH}-static.tar.xz \
@@ -79,7 +81,7 @@ WORKDIR /install
 RUN set -eux; \
   case "${TARGETARCH}/${TARGETVARIANT}" in \
     amd64/*) APP_ARCH="amd64" ;; \
-    arm/*) APP_ARCH="arm64" ;; \
+    arm64/*) APP_ARCH="arm64" ;; \
     *) echo "Unsupported arch: ${TARGETARCH}/${TARGETVARIANT}" >&2; exit 1 ;; \
   esac; \
   curl -sSLO https://github.com/photoprism/photoprism/releases/download/${APP_VERSION}/photoprism_${APP_VERSION}-linux-${APP_ARCH}.tar.gz \
