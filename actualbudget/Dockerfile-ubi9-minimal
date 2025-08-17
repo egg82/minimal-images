@@ -39,7 +39,7 @@ ENV GID=1000
 
 USER root
 
-RUN microdnf install -y bash \
+RUN microdnf install -y curl-minimal bash \
   && microdnf clean all \
   && rm -rf /var/cache/dnf
 
