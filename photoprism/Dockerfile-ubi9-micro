@@ -90,7 +90,7 @@ RUN set -eux; \
     *) echo "Unsupported arch: ${TARGETARCH}/${TARGETVARIANT}" >&2; exit 1 ;; \
   esac; \
   rm -f lib/libtensorflow* \
-  && curl -ssLO https://storage.googleapis.com/tensorflow/versions/${TF_VERSION}/libtensorflow-cpu-linux-${APP_ARCH}.tar.gz \
+  && curl -sSLO https://storage.googleapis.com/tensorflow/versions/${TF_VERSION}/libtensorflow-cpu-linux-${APP_ARCH}.tar.gz \
   && tar -xzf libtensorflow-cpu-linux-${APP_ARCH}.tar.gz lib \
   && rm -f libtensorflow-cpu-linux-${APP_ARCH}.tar.gz
 
