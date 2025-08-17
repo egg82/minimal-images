@@ -1,0 +1,105 @@
+FROM registry.access.redhat.com/ubi9 AS builder
+
+ARG APP_VERSION
+
+ARG SQLITE_VERSION=3500400
+
+USER root
+
+RUN dnf install -y git curl-minimal gzip tar brotli bash \
+    python3.12 python3.12-pip binutils \
+    gcc gcc-c++ make cmake pkgconfig autoconf automake patch \
+  && dnf clean all \
+  && rm -rf /var/cache/dnf
+
+WORKDIR /sqlite
+
+RUN curl -sSLO https://www.sqlite.org/2025/sqlite-autoconf-${SQLITE_VERSION}.tar.gz \
+  && tar -xzf sqlite-autoconf-${SQLITE_VERSION}.tar.gz --strip-components=1 \
+  && CFLAGS="-O2 -fPIC -DSQLITE_ENABLE_JSON1 -DSQLITE_ENABLE_FTS5 -DSQLITE_THREADSAFE=1" \
+  ./configure --prefix=/usr/local \
+  && make -j"$(nproc)" install
+
+WORKDIR /install
+
+ENV FLASK_ENV=production
+ENV PYTHONOPTIMIZE=2
+
+ENV PATH="${PATH}:/usr/local/bin"
+ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64:/usr/lib:/usr/lib64"
+
+RUN git clone https://github.com/searxng/searxng.git . \
+  && git checkout ${APP_VERSION} && rm -rf .git \
+  && cp -p searx/version.py searx/version_frozen.py \
+  && find searx/static/ -type f \( -name "*.html" -o -name "*.css" -o -name "*.js" -o -name "*.svg" \) -exec gzip -9 -k {} + -exec brotli -9 -k {} + \
+  && python3.12 -m pip install --no-cache-dir -r requirements.txt -r requirements-server.txt \
+  && flags=$(grep -v '^\s*#' requirements.txt requirements-server.txt | sed 's/\[.*\]//' | sed -e 's/;.*//' -e 's/[<>=!].*$//' | awk '{print tolower($0)}' | xargs -I{} printf " --hidden-import={} --collect-all={}" ) \
+  && python3.12 -m pip install --no-cache-dir pyinstaller && python3.12 -OO -m PyInstaller --strip --noupx $flags --hidden-import=isodate --collect-all=isodate searx/webapp.py \
+  && cp -rp searx dist/webapp/_internal/ && cp -p /usr/local/lib/libsqlite3.so.0 dist/webapp/_internal/
+
+ENV PATH="${PATH}:/install/dist/webapp"
+
+RUN mkdir -p /rt \
+  && for bin in webapp curl; do \
+      path="$(which "$bin")"; \
+      cp -p --parents "$path" /rt; \
+    done \
+  && for bin in webapp sqlite3 curl; do \
+      path="$(which "$bin")"; \
+      ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
+    done \
+  && cp -p --parents /usr/local/lib/libsqlite3.so* /rt
+
+FROM registry.access.redhat.com/ubi9-minimal
+
+ARG USER=app
+ENV UID=1000
+ENV GID=1000
+
+USER root
+
+RUN microdnf install -y curl-minimal bash \
+  && microdnf clean all \
+  && rm -rf /var/cache/dnf
+
+COPY --from=builder /rt/ /rt/
+RUN for src in /rt/*; do \
+      tgt="/${src#/rt/}"; \
+      if [ -d "$src" ]; then \
+        mkdir -p "$tgt"; \
+        cp -apn "$src"/. "$tgt"/; \
+      else \
+        mkdir -p "$(dirname "$tgt")"; \
+        cp -pn "$src" "$tgt"; \
+      fi; \
+    done \
+  && rm -rf /rt \
+  && rm -rf /install
+
+RUN groupadd -g ${GID} ${USER} \
+  && useradd -r -u ${UID} -g ${USER} -d /app -s /bin/bash ${USER}
+
+ENV PATH="${PATH}:/usr/local/bin"
+ENV LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64:/usr/lib:/usr/lib64"
+ENV FLASK_ENV=production
+ENV PYTHONOPTIMIZE=2
+
+ENV SEARXNG_SETTINGS_PATH="/etc/searxng/settings.yml"
+
+WORKDIR /app
+COPY --from=builder /install/dist/webapp /app
+COPY --from=builder /install/searx/settings.yml /etc/searxng/
+COPY --from=builder /install/searx/limiter.toml /etc/searxng/
+COPY entrypoint.sh /app/
+
+RUN chown -R "${UID}":"${GID}" /app \
+  && chmod +x /app/entrypoint.sh
+
+USER ${UID}
+
+EXPOSE 8080
+
+VOLUME /etc/searxng
+VOLUME /var/cache/searxng
+
+ENTRYPOINT ["/app/entrypoint.sh"]
