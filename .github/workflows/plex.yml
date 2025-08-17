@@ -17,6 +17,13 @@ jobs:
       fail-fast: false
       matrix:
         flavor: [ubi9-minimal, ubi9-micro, scratch]
+        include:
+          - flavor: ubi9-minimal
+            platforms: linux/amd64
+          - flavor: ubi9-micro
+            platforms: linux/amd64
+          - flavor: scratch
+            platforms: linux/amd64
 
     env:
       PROJECT: plex
@@ -24,6 +31,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
+      - uses: docker/setup-qemu-action@v3
+        with:
+          platforms: all
 
       - uses: docker/setup-buildx-action@v2
 
@@ -40,7 +51,7 @@ jobs:
           context: ./${{ env.PROJECT }}
           file: ./${{ env.PROJECT }}/Dockerfile-${{ matrix.flavor }}
           push: true
-          platforms: linux/amd64
+          platforms: ${{ matrix.platforms }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/minimal-images/${{ env.PROJECT }}:${{ github.ref_name }}-${{ matrix.flavor }}
             ${{ matrix.flavor == 'ubi9-micro' && format('ghcr.io/{0}/minimal-images/{1}:{2}', github.repository_owner, env.PROJECT, github.ref_name) || '' }}

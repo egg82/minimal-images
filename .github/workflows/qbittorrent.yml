@@ -1,4 +1,4 @@
-name: actualbudget
+name: qbittorrent
 
 on:
   push:
@@ -25,11 +25,11 @@ jobs:
           - flavor: scratch
             platforms: linux/amd64,linux/arm64
           - flavor: alpine
-            platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/ppc64le,linux/s390x
+            platforms: linux/amd64,linux/arm64,linux/arm/v7,linux/386,linux/riscv64
 
     env:
-      PROJECT: actualbudget
-      APP_VERSION: v25.8.0
+      PROJECT: qbittorrent
+      APP_VERSION: 5.1.2_v2.0.11
 
     steps:
       - uses: actions/checkout@v3

@@ -1,32 +1,35 @@
 FROM node:20-alpine AS builder
 
 ARG APP_VERSION
+ARG TARGETARCH
+ARG TARGETVARIANT
 
 USER root
 
-RUN apk add --no-cache git curl bash
+RUN apk add --no-cache curl bash
 
 WORKDIR /install
 
-RUN git clone https://github.com/actualbudget/actual.git . \
-  && git checkout ${APP_VERSION} && rm -rf .git \
-  && yarn install --immutable \
-  && yarn build:server \
-  && yarn workspaces focus @actual-app/sync-server --production \
-  && rm -rf ./node_modules/@actual-app/web ./node_modules/@actual-app/sync-server \
-  && mkdir -p ./node_modules/@actual-app/web && cp -p ./packages/desktop-client/package.json ./node_modules/@actual-app/web/package.json \
-  && cp -rp ./packages/desktop-client/build ./node_modules/@actual-app/web/build
+RUN set -eux; \
+  case "${TARGETARCH}/${TARGETVARIANT}" in \
+    amd64/*) APP_ARCH="x86_64" ;; \
+    arm64/*) APP_ARCH="aarch64" ;; \
+    arm/v7) APP_ARCH="armv7" ;; \
+    386/*) APP_ARCH="x86" ;; \
+    riscv64/*) APP_ARCH="riscv64" ;; \
+    *) echo "Unsupported arch: ${TARGETARCH}/${TARGETVARIANT}" >&2; exit 1 ;; \
+  esac; \
+  curl -sSL https://github.com/userdocs/qbittorrent-nox-static/releases/download/release-${APP_VERSION}/${APP_ARCH}-qbittorrent-nox -o qbittorrent-nox
 
 RUN mkdir -p /rt \
-  && for bin in node curl; do \
+  && for bin in curl; do \
       path="$(which "$bin")"; \
       cp -p --parents "$path" /rt; \
     done \
-  && for bin in node curl; do \
+  && for bin in curl; do \
       path="$(which "$bin")"; \
       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
-    done \
-  && cp -rp --parents /usr/local/lib/node_modules /rt
+    done
 
 FROM alpine
 
@@ -55,21 +58,23 @@ RUN echo "${USER}:x:${UID}:" >> /etc/group \
   && echo "${USER}:x:${UID}:${GID}::/app:/bin/bash" >> /etc/passwd
 
 ENV PATH="/usr/local/bin:${PATH}:/usr/local/lib/node_modules/bin:/app/node_modules/.bin"
-ENV NODE_ENV=production
+
+ENV HOME="/config" \
+  XDG_CONFIG_HOME="/config" \
+  XDG_DATA_HOME="/config"
 
 WORKDIR /app
-COPY --from=builder /install/node_modules /app/node_modules
-COPY --from=builder /install/packages/sync-server/package.json /app/
-COPY --from=builder /install/packages/sync-server/build /app/build
+COPY --from=builder /install/qbittorrent-nox /app/
 COPY entrypoint.sh /app/
 
 RUN chown -R "${UID}":"${GID}" /app \
-  && chmod +x /app/entrypoint.sh
+  && chmod +x /app/entrypoint.sh \
+  && chmod +x /app/qbittorrent-nox
 
 USER ${UID}
 
-EXPOSE 5006
+EXPOSE 8080
 
-VOLUME /data
+VOLUME /config
 
 ENTRYPOINT ["/app/entrypoint.sh"]

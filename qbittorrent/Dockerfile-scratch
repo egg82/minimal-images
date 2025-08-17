@@ -1,0 +1,83 @@
+FROM registry.access.redhat.com/ubi9 AS builder
+
+ARG APP_VERSION
+ARG TARGETARCH
+ARG TARGETVARIANT
+
+ARG USER=app
+ARG UID=1000
+ARG GID=1000
+
+USER root
+
+RUN dnf install -y curl-minimal bash \
+  && dnf clean all \
+  && rm -rf /var/cache/dnf
+
+WORKDIR /install
+
+RUN set -eux; \
+  case "${TARGETARCH}/${TARGETVARIANT}" in \
+    amd64/*) APP_ARCH="x86_64" ;; \
+    arm64/*) APP_ARCH="aarch64" ;; \
+    arm/v7) APP_ARCH="armv7" ;; \
+    386/*) APP_ARCH="x86" ;; \
+    riscv64/*) APP_ARCH="riscv64" ;; \
+    *) echo "Unsupported arch: ${TARGETARCH}/${TARGETVARIANT}" >&2; exit 1 ;; \
+  esac; \
+  curl -sSL https://github.com/userdocs/qbittorrent-nox-static/releases/download/release-${APP_VERSION}/${APP_ARCH}-qbittorrent-nox -o qbittorrent-nox
+
+RUN mkdir -p /rt \
+  && for bin in curl bash sh env coreutils sleep kill printf echo wait true; do \
+      path="$(which "$bin")"; \
+      cp -p --parents "$path" /rt; \
+    done \
+  && for bin in curl bash sh env coreutils sleep kill printf echo wait true; do \
+      path="$(which "$bin")"; \
+      ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
+    done \
+  && cp -p --parents /etc/pki/tls/cert.pem /rt \
+  && cp -p --parents /etc/crypto-policies/back-ends/opensslcnf.config /rt \
+  && cp -p --parents /etc/crypto-policies/config /rt \
+  && loader="$(ldd "$(which bash)" | awk '/ld-linux/ {print $1}')" \
+  && [ -n "$loader" ] \
+  && cp -p --parents "$loader" /rt
+
+COPY entrypoint.sh /install/
+RUN chown -R "${UID}":"${GID}" /install \
+  && chmod +x /install/entrypoint.sh \
+  && chmod +x /install/qbittorrent-nox \
+  && cp -rp /install /rt/app
+
+RUN mkdir -p /rt/etc \
+  && echo "${USER}:x:${UID}:" >> /etc/group \
+  && echo "${USER}:x:${UID}:${GID}::/app:/bin/bash" >> /etc/passwd
+
+RUN mkdir -p /rt/tmp \
+  && chmod 777 /rt/tmp
+
+FROM scratch
+
+ARG USER=app
+ENV UID=1000
+ENV GID=1000
+
+USER root
+
+COPY --from=builder /rt/ /
+
+ENV PATH="/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+
+ENV HOME="/config" \
+  XDG_CONFIG_HOME="/config" \
+  XDG_DATA_HOME="/config"
+
+WORKDIR /app
+
+USER ${UID}
+
+EXPOSE 8080
+
+VOLUME /config
+
+ENTRYPOINT ["/app/entrypoint.sh"]

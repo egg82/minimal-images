@@ -1,7 +1,8 @@
 FROM registry.access.redhat.com/ubi9 AS builder
 
 ARG APP_VERSION
-ARG PLATFORM
+ARG TARGETARCH
+ARG TARGETVARIANT
 
 ARG EXPAT_VERSION=R_2_7_1
 ARG GIFLIB_VERSION=5.1.4
@@ -32,8 +33,16 @@ RUN dnf install -y git xz curl-minimal cronie gzip tar bash \
 
 WORKDIR /ffmpeg
 
-RUN curl -sSLO https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz \
-  && tar -xJf ffmpeg-release-amd64-static.tar.xz --strip-components=1 \
+RUN set -eux; \
+  case "${TARGETARCH}/${TARGETVARIANT}" in \
+    amd64/*) APP_ARCH="amd64" ;; \
+    arm64/*) APP_ARCH="arm64" ;; \
+    arm/v7) APP_ARCH="armhf" ;; \
+    386/*) APP_ARCH="i686" ;; \
+    *) echo "Unsupported arch: ${TARGETARCH}/${TARGETVARIANT}" >&2; exit 1 ;; \
+  esac; \
+  curl -sSLO https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-${APP_ARCH}-static.tar.xz \
+  && tar -xJf ffmpeg-release-${APP_ARCH}-static.tar.xz --strip-components=1 \
   && cp ffmpeg ffprobe /usr/local/bin/
 
 WORKDIR /libexpat
@@ -63,14 +72,25 @@ RUN git clone https://github.com/libvips/libvips.git . \
 
 WORKDIR /install
 
-RUN PLATFORM_SUBST=$(echo $PLATFORM | sed 's/\//-/g') PLATFORM_X86="$(echo $PLATFORM | sed 's/linux\/amd64/linux-x86_64/')" \
-  && curl -sSLO https://github.com/photoprism/photoprism/releases/download/${APP_VERSION}/photoprism_${APP_VERSION}-${PLATFORM_SUBST}.tar.gz \
-  && tar -xzf photoprism_${APP_VERSION}-${PLATFORM_SUBST}.tar.gz --strip-components=1 \
-  && rm -f photoprism_${APP_VERSION}-${PLATFORM_SUBST}.tar.gz \
-  && rm -f lib/libtensorflow* \
-  && curl -ssLO https://storage.googleapis.com/tensorflow/versions/${TF_VERSION}/libtensorflow-cpu-${PLATFORM_X86}.tar.gz \
-  && tar -xzf libtensorflow-cpu-${PLATFORM_X86}.tar.gz lib \
-  && rm -f libtensorflow-cpu-${PLATFORM_X86}.tar.gz
+RUN set -eux; \
+  case "${TARGETARCH}/${TARGETVARIANT}" in \
+    amd64/*) APP_ARCH="amd64" ;; \
+    arm/*) APP_ARCH="arm64" ;; \
+    *) echo "Unsupported arch: ${TARGETARCH}/${TARGETVARIANT}" >&2; exit 1 ;; \
+  esac; \
+  curl -sSLO https://github.com/photoprism/photoprism/releases/download/${APP_VERSION}/photoprism_${APP_VERSION}-linux-${APP_ARCH}.tar.gz \
+  && tar -xzf photoprism_${APP_VERSION}-linux-${APP_ARCH}.tar.gz --strip-components=1 \
+  && rm -f photoprism_${APP_VERSION}-linux-${APP_ARCH}.tar.gz
+
+RUN set -eux; \
+  case "${TARGETARCH}/${TARGETVARIANT}" in \
+    amd64/*) APP_ARCH="x86_64" ;; \
+    *) echo "Unsupported arch: ${TARGETARCH}/${TARGETVARIANT}" >&2; exit 1 ;; \
+  esac; \
+  rm -f lib/libtensorflow* \
+  && curl -ssLO https://storage.googleapis.com/tensorflow/versions/${TF_VERSION}/libtensorflow-cpu-linux-${APP_ARCH}.tar.gz \
+  && tar -xzf libtensorflow-cpu-linux-${APP_ARCH}.tar.gz lib \
+  && rm -f libtensorflow-cpu-linux-${APP_ARCH}.tar.gz
 
 RUN mkdir -p /rt \
   && for bin in photoprism ffmpeg ffprobe exiftool crond curl; do \

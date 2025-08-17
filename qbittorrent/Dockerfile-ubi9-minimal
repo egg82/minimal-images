@@ -15,28 +15,23 @@ WORKDIR /install
 RUN set -eux; \
   case "${TARGETARCH}/${TARGETVARIANT}" in \
     amd64/*) APP_ARCH="x86_64" ;; \
-    386/*) APP_ARCH="i686" ;; \
+    arm64/*) APP_ARCH="aarch64" ;; \
+    arm/v7) APP_ARCH="armv7" ;; \
+    386/*) APP_ARCH="x86" ;; \
+    riscv64/*) APP_ARCH="riscv64" ;; \
     *) echo "Unsupported arch: ${TARGETARCH}/${TARGETVARIANT}" >&2; exit 1 ;; \
   esac; \
-  curl -sSLO https://downloads.plex.tv/plex-media-server-new/${APP_VERSION}/redhat/plexmediaserver-${APP_VERSION}.${APP_ARCH}.rpm \
-  && rpm -Uvh --nodeps --noscripts --nosignature ./plexmediaserver-${APP_VERSION}.${APP_ARCH}.rpm \
-  && rm -f ./plexmediaserver-${APP_VERSION}.${APP_ARCH}.rpm
-
-ENV PATH="${PATH}:/usr/lib/plexmediaserver"
+  curl -sSL https://github.com/userdocs/qbittorrent-nox-static/releases/download/release-${APP_VERSION}/${APP_ARCH}-qbittorrent-nox -o qbittorrent-nox
 
 RUN mkdir -p /rt \
   && for bin in curl; do \
       path="$(which "$bin")"; \
       cp -p --parents "$path" /rt; \
     done \
-  && for bin in CrashUploader "Plex Commercial Skipper" "Plex DLNA Server" \
-    "Plex Media Fingerprinter" "Plex Media Scanner" "Plex Media Server" \
-    "Plex Relay" "Plex Script Host" "Plex SQLite" "Plex Transcoder" \
-    "Plex Tuner Service" curl; do \
+  && for bin in curl; do \
       path="$(which "$bin")"; \
       ldd "$path" 2>/dev/null | awk '/=>/ {print $(NF-1)}' | grep '^/' | xargs -r -I{} cp -p --parents {} /rt; \
-    done \
-  && cp -rp --parents /usr/lib/plexmediaserver /rt
+    done
 
 FROM registry.access.redhat.com/ubi9-minimal
 
@@ -66,25 +61,21 @@ RUN for src in /rt/*; do \
 RUN groupadd -g ${GID} ${USER} \
   && useradd -r -u ${UID} -g ${USER} -d /app -s /bin/bash ${USER}
 
-ENV PLEX_MEDIA_SERVER_APPLICATION_SUPPORT_DIR="/config/Library/Application Support" \
-  PLEX_MEDIA_SERVER_HOME="/usr/lib/plexmediaserver" \
-  PLEX_MEDIA_SERVER_MAX_PLUGIN_PROCS="6" \
-  PLEX_MEDIA_SERVER_MAX_STACK_SIZE="3000" \
-  PLEX_MEDIA_SERVER_USER="app" \
-  PLEX_MEDIA_SERVER_INFO_VENDOR="Docker" \
-  PLEX_MEDIA_SERVER_INFO_DEVICE="Docker Container" \
-  NVIDIA_DRIVER_CAPABILITIES="compute,video,utility,graphics"
+ENV HOME="/config" \
+  XDG_CONFIG_HOME="/config" \
+  XDG_DATA_HOME="/config"
 
 WORKDIR /app
+COPY --from=builder /install/qbittorrent-nox /app/
 COPY entrypoint.sh /app/
 
 RUN chown -R "${UID}":"${GID}" /app \
   && chmod +x /app/entrypoint.sh \
-  && chown -R "${UID}":"${GID}" /usr/lib/plexmediaserver
+  && chmod +x /app/qbittorrent-nox
 
 USER ${UID}
 
-EXPOSE 32400/tcp 8324/tcp 32469/tcp 1900/udp 32410/udp 32412/udp 32413/udp 32414/udp
+EXPOSE 8080
 
 VOLUME /config
 
