@@ -2,7 +2,7 @@
 
 # https://github.com/searxng/searxng/blob/master/container/builder.dockerfile
 
-APP_VERSION=6b1516d
+APP_VERSION=11ea1a8
 
 VOLUMES=( config data )
 

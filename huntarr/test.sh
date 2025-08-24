@@ -2,7 +2,7 @@
 
 # https://github.com/plexguide/Huntarr.io/blob/main/Dockerfile
 
-APP_VERSION=8.1.15
+APP_VERSION=8.2.9
 
 VOLUMES=( config )
 
